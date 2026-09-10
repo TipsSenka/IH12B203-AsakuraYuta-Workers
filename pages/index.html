@@ -3,9 +3,104 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>フロントエンドです</title>
+    <meta name="theme-color" content="#102a43">
+    <title>Worker API Console</title>
+    <style>
+        :root { --ink: #102a43; --muted: #627d98; --line: #d9e2ec; --paper: #f5f7fa; --blue: #1677ff; --mint: #17a673; --coral: #e85d75; }
+        * { box-sizing: border-box; }
+        body { margin: 0; color: var(--ink); background: var(--paper); font-family: "Yu Gothic", "Hiragino Kaku Gothic ProN", sans-serif; }
+        header { padding: 54px max(24px, calc((100% - 1120px) / 2)); color: white; background: #102a43; position: relative; overflow: hidden; }
+        header::after { content: ""; position: absolute; width: 420px; height: 420px; right: -140px; top: -220px; border: 70px solid rgba(255,255,255,.08); border-radius: 50%; }
+        .eyebrow { margin: 0 0 12px; color: #8fe3cf; font-size: 12px; font-weight: 700; letter-spacing: .16em; }
+        h1 { margin: 0; max-width: 700px; font-size: clamp(32px, 5vw, 58px); line-height: 1.08; letter-spacing: .02em; }
+        .lead { margin: 18px 0 0; max-width: 640px; color: #d9e2ec; line-height: 1.8; }
+        main { width: min(1120px, calc(100% - 48px)); margin: 30px auto 70px; }
+        .connection { display: flex; gap: 12px; align-items: end; padding: 18px; background: white; border: 1px solid var(--line); border-top: 4px solid var(--mint); }
+        label { display: grid; gap: 7px; flex: 1; color: var(--muted); font-size: 12px; font-weight: 700; }
+        input { width: 100%; padding: 12px 14px; color: var(--ink); background: #f8fafc; border: 1px solid var(--line); border-radius: 5px; font: inherit; }
+        input:focus { outline: 3px solid rgba(22,119,255,.18); border-color: var(--blue); }
+        button { cursor: pointer; padding: 12px 17px; color: white; background: var(--blue); border: 0; border-radius: 5px; font: inherit; font-weight: 700; transition: transform .16s, background .16s; }
+        button:hover { background: #0b5dcc; transform: translateY(-1px); }
+        button:disabled { cursor: wait; opacity: .6; transform: none; }
+        .section-heading { display: flex; justify-content: space-between; align-items: baseline; margin: 42px 0 16px; }
+        h2 { margin: 0; font-size: 22px; }
+        .status { color: var(--muted); font-size: 13px; }
+        .grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; }
+        .card { display: flex; flex-direction: column; min-height: 220px; padding: 22px; background: white; border: 1px solid var(--line); border-radius: 8px; box-shadow: 0 8px 24px rgba(16,42,67,.05); }
+        .card-top { display: flex; justify-content: space-between; gap: 16px; align-items: center; }
+        h3 { margin: 0; font-size: 18px; }
+        .path { color: var(--muted); font: 12px ui-monospace, SFMono-Regular, Consolas, monospace; }
+        .description { margin: 10px 0 18px; color: var(--muted); font-size: 14px; }
+        .card button { margin-top: auto; align-self: flex-start; }
+        pre { display: none; overflow: auto; max-height: 230px; margin: 16px 0 0; padding: 14px; color: #d9e2ec; background: #102a43; border-radius: 5px; font: 12px/1.6 ui-monospace, SFMono-Regular, Consolas, monospace; white-space: pre-wrap; word-break: break-word; }
+        pre.visible { display: block; }
+        .ok { color: var(--mint); } .error { color: var(--coral); }
+        footer { color: var(--muted); text-align: center; font-size: 12px; }
+        @media (max-width: 700px) { header { padding: 38px 24px; } main { width: min(100% - 32px, 1120px); margin-top: 20px; } .connection, .grid { grid-template-columns: 1fr; display: grid; } .connection button { width: 100%; } .section-heading { align-items: start; gap: 8px; flex-direction: column; } }
+    </style>
 </head>
 <body>
-    <p>フロントエンドです</p>
+    <header>
+        <p class="eyebrow">CLOUDFLARE WORKERS / API CONSOLE</p>
+        <h1>データを、すぐ確かめる。</h1>
+        <p class="lead">Pages から Worker API へ接続し、エンドポイントのレスポンスとステータスを確認できます。</p>
+    </header>
+    <main>
+        <section class="connection" aria-label="Worker接続設定">
+            <label>Worker ベース URL
+                <input id="base-url" type="url" value="http://127.0.0.1:8787" placeholder="https://worker-name.subdomain.workers.dev">
+            </label>
+            <button id="save-url" type="button">接続先を保存</button>
+        </section>
+        <div class="section-heading">
+            <h2>エンドポイント</h2>
+            <span id="status" class="status" aria-live="polite">接続先を設定してください</span>
+        </div>
+        <section id="endpoint-grid" class="grid" aria-live="polite"></section>
+        <footer>Cloudflare Workers API / JSON response viewer</footer>
+    </main>
+    <script>
+        const endpoints = [
+            { id: "course", title: "コース情報", path: "/api/course", description: "提供している学習コースの一覧を取得" },
+            { id: "hello", title: "Hello API", path: "/api/hello?name=山田", description: "名前を渡して挨拶メッセージを取得" },
+            { id: "fortune", title: "今日の運勢", path: "/api/fortune", description: "今日の運勢を取得" },
+            { id: "events", title: "イベント情報", path: "/api/events", description: "開催予定イベントの一覧を取得" }
+        ];
+        const baseUrl = document.querySelector("#base-url");
+        const status = document.querySelector("#status");
+        const savedUrl = localStorage.getItem("workerBaseUrl");
+        if (savedUrl) baseUrl.value = savedUrl;
+        function renderCards() {
+            document.querySelector("#endpoint-grid").innerHTML = endpoints.map(endpoint => `
+                <article class="card">
+                    <div class="card-top"><h3>${endpoint.title}</h3><span class="path">${endpoint.path}</span></div>
+                    <p class="description">${endpoint.description}</p>
+                    <button type="button" data-endpoint="${endpoint.id}">GET リクエスト</button>
+                    <pre id="result-${endpoint.id}"></pre>
+                </article>`).join("");
+            document.querySelectorAll("[data-endpoint]").forEach(button => button.addEventListener("click", () => requestEndpoint(button.dataset.endpoint, button)));
+        }
+        function getBaseUrl() { return baseUrl.value.trim().replace(/\/$/, ""); }
+        async function requestEndpoint(id, button) {
+            const endpoint = endpoints.find(item => item.id === id);
+            const output = document.querySelector(`#result-${id}`);
+            button.disabled = true; output.className = "visible"; output.textContent = "通信中...";
+            try {
+                const response = await fetch(`${getBaseUrl()}${endpoint.path}`);
+                const body = await response.json();
+                output.className = `visible ${response.ok ? "ok" : "error"}`;
+                output.textContent = `HTTP ${response.status}\n${JSON.stringify(body, null, 2)}`;
+                status.textContent = `${endpoint.path} : HTTP ${response.status}`;
+                status.className = `status ${response.ok ? "ok" : "error"}`;
+            } catch (error) {
+                output.className = "visible error"; output.textContent = `接続に失敗しました\n${error.message}`; status.textContent = "接続エラー"; status.className = "status error";
+            } finally { button.disabled = false; }
+        }
+        document.querySelector("#save-url").addEventListener("click", () => {
+            try { new URL(getBaseUrl()); } catch { status.textContent = "URLの形式を確認してください"; status.className = "status error"; return; }
+            localStorage.setItem("workerBaseUrl", getBaseUrl()); status.textContent = "接続先を保存しました"; status.className = "status ok";
+        });
+        renderCards();
+    </script>
 </body>
 </html>
