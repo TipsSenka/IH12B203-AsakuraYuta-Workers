@@ -1,4 +1,4 @@
-name = "ih12b203-api"
+name = "ih12b203-asakurayuta-workers-backend"
 main = "src/index.js"
 compatibility_date = "2026-09-10"
 
