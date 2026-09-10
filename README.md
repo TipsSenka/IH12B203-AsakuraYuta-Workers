@@ -16,7 +16,9 @@ npm install
 npm run dev
 ```
 
-Pages は `pages/index.html` をブラウザで開き、接続先に `http://127.0.0.1:8787` を設定します。
+Pages は `pages/index.html` をブラウザで開くと、接続先に本番 Worker URL が初期設定されています。
+
+本番 Worker URL: `https://ih12b203-asakurayuta-workers-backend.nhs50170.workers.dev`
 
 ## API
 

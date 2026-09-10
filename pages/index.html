@@ -48,7 +48,7 @@
     <main>
         <section class="connection" aria-label="Worker接続設定">
             <label>Worker ベース URL
-                <input id="base-url" type="url" value="http://127.0.0.1:8787" placeholder="https://worker-name.subdomain.workers.dev">
+                <input id="base-url" type="url" value="https://ih12b203-asakurayuta-workers-backend.nhs50170.workers.dev" placeholder="https://worker-name.subdomain.workers.dev">
             </label>
             <button id="save-url" type="button">接続先を保存</button>
         </section>
@@ -66,10 +66,12 @@
             { id: "fortune", title: "今日の運勢", path: "/api/fortune", description: "今日の運勢を取得" },
             { id: "events", title: "イベント情報", path: "/api/events", description: "開催予定イベントの一覧を取得" }
         ];
+        const productionUrl = "https://ih12b203-asakurayuta-workers-backend.nhs50170.workers.dev";
         const baseUrl = document.querySelector("#base-url");
         const status = document.querySelector("#status");
         const savedUrl = localStorage.getItem("workerBaseUrl");
-        if (savedUrl) baseUrl.value = savedUrl;
+        if (savedUrl && !savedUrl.startsWith("http://127.0.0.1")) baseUrl.value = savedUrl;
+        if (savedUrl?.startsWith("http://127.0.0.1")) localStorage.setItem("workerBaseUrl", productionUrl);
         function renderCards() {
             document.querySelector("#endpoint-grid").innerHTML = endpoints.map(endpoint => `
                 <article class="card">
